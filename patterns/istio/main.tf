@@ -1,5 +1,5 @@
 provider "aws" {
-  region = local.region
+  region = "ap-south-1"
 }
 
 provider "kubernetes" {
@@ -31,8 +31,8 @@ provider "helm" {
 data "aws_availability_zones" "available" {}
 
 locals {
-  name   = basename(path.cwd)
-  region = "us-west-2"
+  name   = "zinc-sandbox"
+  region = "ap-south-1"
 
   vpc_cidr = "10.0.0.0/16"
   azs      = slice(data.aws_availability_zones.available.names, 0, 3)
@@ -73,7 +73,8 @@ module "eks" {
 
   eks_managed_node_groups = {
     initial = {
-      instance_types = ["m5.large"]
+      instance_types = ["m7g.large"]
+      ami_type       = "AL2_ARM_64"
 
       min_size     = 1
       max_size     = 5
@@ -171,6 +172,8 @@ module "eks_blueprints_addons" {
                 "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
                 "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internet-facing"
                 "service.beta.kubernetes.io/aws-load-balancer-attributes"      = "load_balancing.cross_zone.enabled=true"
+                "service.beta.kubernetes.io/aws-load-balancer-ssl-cert": "arn:aws:acm:ap-south-1:978145291337:certificate/11daa07d-ad23-4232-82d9-f4f5e2cacf0e"
+                "service.beta.kubernetes.io/aws-load-balancer-ssl-ports": "443"
               }
             }
           }
@@ -196,6 +199,8 @@ module "vpc" {
   azs             = local.azs
   private_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 4, k)]
   public_subnets  = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 48)]
+  database_subnets    = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 52)]
+  elasticache_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 56)]
 
   enable_nat_gateway = true
   single_nat_gateway = true
